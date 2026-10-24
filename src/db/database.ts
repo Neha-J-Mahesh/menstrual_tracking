@@ -27,25 +27,48 @@ interface WebDB {
 
 const DB_KEY = '@rural_health_db';
 
-function getWebDB(): WebDB {
+const memoryDB: WebDB = {
+  profiles: [],
+  period_logs: [],
+  symptom_logs: [],
+  hb_test_logs: [],
+  screening_results: [],
+  _nextId: {},
+};
+
+function localStorageAvailable(): boolean {
   try {
-    const raw = localStorage.getItem(DB_KEY);
-    if (raw) return JSON.parse(raw) as WebDB;
-  } catch {}
-  const fresh: WebDB = {
-    profiles: [],
-    period_logs: [],
-    symptom_logs: [],
-    hb_test_logs: [],
-    screening_results: [],
-    _nextId: {},
-  };
-  saveWebDB(fresh);
-  return fresh;
+    const test = '__ls_test__';
+    localStorage.setItem(test, '1');
+    localStorage.removeItem(test);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+let dbInitialized = false;
+
+function getWebDB(): WebDB {
+  if (localStorageAvailable()) {
+    try {
+      const raw = localStorage.getItem(DB_KEY);
+      if (raw) return JSON.parse(raw) as WebDB;
+    } catch {}
+  }
+  if (!dbInitialized) {
+    dbInitialized = true;
+    saveWebDB(memoryDB);
+  }
+  return memoryDB;
 }
 
 function saveWebDB(db: WebDB): void {
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
+  if (localStorageAvailable()) {
+    try {
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
+    } catch {}
+  }
 }
 
 function nextId(db: WebDB, table: string): number {
